@@ -143,7 +143,8 @@ public class App {
     }
 
     // Using methods that return CompletableFuture<T>
-    public static void main(String[] args) {
+    // Control flow of outputs from multiple CompletableFutures
+    public static void main10(String[] args) {
         getValueAsync(5)
                 .thenAccept(x -> log.info("Output from getValueAsync: {}", x));
 
@@ -163,6 +164,25 @@ public class App {
         sleepForMilliSeconds(5000);
     }
 
+    // Use async variant methods to run processes in separate threads
+    public static void main(String[] args) {
+        CompletableFuture<Integer> initialValue = CompletableFuture.supplyAsync(App::getValueAfterSleeping);
+
+        CompletableFuture<Integer> value1 =
+            initialValue.thenApplyAsync(App::timesTenWithDelay);
+
+        // This runs in a separate thread (if previous process takes some time)
+        CompletableFuture<Integer> value2 =
+                initialValue.thenApplyAsync(App::timesTwoWithDelay);
+
+        // Async variant used so that previous threads won't be blocked
+        // Another thread may be used while previous threads can be used for another process
+        value1
+                .thenCombineAsync(value2, (a, b) -> a + b)
+                .thenAccept(x -> log.info("Output from summing value1 and value2: {}", x));
+
+        sleepForMilliSeconds(5000);
+    }
 
     // Simulates a long process to return value
     public static int someLongNetworkProcessing(int value) {
@@ -190,11 +210,6 @@ public class App {
         }
     }
 
-    public static int timesTwo(int input) {
-        log.info("timesTwo: {}", Thread.currentThread().getName());
-        return input * 2;
-    }
-
     public static void setCompletableFuturePipeline(CompletableFuture<Integer> future) {
         future.thenApply(x -> x * 5)
                 .thenApply(x -> x + 20)
@@ -211,6 +226,7 @@ public class App {
     }
 
     public static int getValueAfterSleeping() {
+        log.info("getValueAfterSleeping (returns 5): {}", Thread.currentThread().getName());
         sleepForMilliSeconds(2000);
         return 5;
     }
@@ -231,8 +247,24 @@ public class App {
         return CompletableFuture.supplyAsync(() -> timesTwenty(value));
     }
 
+    public static int timesTwo(int input) {
+        log.info("timesTwo for {}: {}", input, Thread.currentThread().getName());
+        return input * 2;
+    }
+
+    public static int timesTwoWithDelay(int input) {
+        log.info("timesTwoWithDelay for {}: {}", input, Thread.currentThread().getName());
+        return input * 2;
+    }
+
     public static int timesTen(int input) {
         log.info("timesTen for {}: {}", input, Thread.currentThread().getName());
+        return input * 10;
+    }
+
+    public static int timesTenWithDelay(int input) {
+        log.info("timesTenWithDelay for {}: {}", input, Thread.currentThread().getName());
+        sleepForMilliSeconds(2000);
         return input * 10;
     }
 
